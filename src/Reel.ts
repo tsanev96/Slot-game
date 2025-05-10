@@ -155,10 +155,12 @@ export class Reel extends Container {
       onUpdate: () => {
         // once the reel crosses the symbol height it will only go back
         // and we loop the last symbol to be visible at the top (without resetting the animation)
+        // issue two elements overlapping
         if (!this.backoutStarted && this.position.y >= this.symbolHeight) {
           this.loopReel();
           for (const symbol of this.symbols) {
-            symbol.position.y -= this.symbolHeight;
+            symbol.position.y +=
+              this.movingDirection === "up" ? symbol.height : -symbol.height;
           }
           this.backoutStarted = true;
         }

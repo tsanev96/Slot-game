@@ -4,6 +4,7 @@ import { Container } from "pixi.js";
 import { ReelSymbol } from "./ReelSymbol";
 import { AssetLoader } from "./AssetLoader";
 import { GameConfig } from "./config";
+import { MovingDirection } from "./types";
 
 export enum ReelEvents {
   stoppedSpinning = "stoppedSpinning",
@@ -29,7 +30,7 @@ export class Reel extends Container {
   private readonly symbolHeight: number;
   private readonly reelAreaWidth: number;
   private readonly reelAreaHeight: number;
-  private readonly movingDirection: string;
+  private readonly movingDirection: MovingDirection;
 
   /** the amount of time it takes one symbol going to go one symbols's height down
       which is done repeatedly use in the spinning animation */
@@ -60,7 +61,7 @@ export class Reel extends Container {
     // down: first symbol placed above the reel area
     // up: first symbol placed below the reel area
     for (const [i, symbol] of this.symbols.entries()) {
-      const index = this.movingDirection === "down" ? i - 1 : i;
+      const index = this.movingDirection === MovingDirection.DOWN ? i - 1 : i;
       symbol.y = index * this.symbolHeight;
       this.addChild(symbol);
     }
@@ -74,26 +75,28 @@ export class Reel extends Container {
   }
 
   public async startSpinning() {
-    // const initialShiftReelDirection = this.movingDirection === "up" ? -1 : 1;
+    const initialShiftReelDirection =
+      this.movingDirection === MovingDirection.DOWN
+        ? this.symbolHeight
+        : -this.symbolHeight;
     // ease in to the spinning animiation
     await gsap.to(this.position, {
-      y:
-        this.movingDirection === "down"
-          ? this.symbolHeight
-          : -this.symbolHeight,
+      y: initialShiftReelDirection,
       duration: this.spinningTweenDuration * 2, // will approximately match the linear speed of the spinning, but would be good to calculate it explicitly
       ease: "power1.in",
     });
-    // return;
     this.loopReel();
     this.position.y = 0;
-    // return; // single spin TODO
+    return; // single spin TODO
 
     this.needsToStop = false;
 
     const tween = gsap.to(this.position, {
       // start animating twice the height and time
-      y: this.symbolHeight * 2 * (this.movingDirection === "down" ? 1 : -1),
+      y:
+        this.symbolHeight *
+        2 *
+        (this.movingDirection === MovingDirection.DOWN ? 1 : -1),
       duration: this.spinningTweenDuration * 2,
       ease: "none",
       onUpdate: () => {
@@ -112,10 +115,9 @@ export class Reel extends Container {
     });
   }
 
-  // TODO
-
-  private updateSymbolPosition(symbol: ReelSymbol, eps: number) {
-    const directionIsDown = this.movingDirection === "down";
+  private updateSymbolPosition(symbol: ReelSymbol) {
+    const eps = 0.1;
+    const directionIsDown = this.movingDirection === MovingDirection.DOWN;
     const movementY = directionIsDown ? this.symbolHeight : -this.symbolHeight;
 
     symbol.position.y += movementY;
@@ -135,16 +137,16 @@ export class Reel extends Container {
       when the spinning animation is reset, the reel will go back one place, and the symbols down one place, visually staying in the same place */
   private loopReel() {
     for (const symbol of this.symbols) {
-      const eps = 0.1;
-      this.updateSymbolPosition(symbol, eps);
+      this.updateSymbolPosition(symbol);
     }
+
+    this.symbols.forEach(this.updateSymbolPosition.bind(this));
   }
 
   public stopSpinning() {
     this.needsToStop = true;
   }
 
-  ///sadfsafdsfsdf NOOOOEOOOOOOOOO
   public async beginStoppingAnimation() {
     if (this.stopping) {
       // could be stopping from multiple sources, if it's already stopping, we let the animation continue
@@ -154,25 +156,42 @@ export class Reel extends Container {
     this.stopping = true;
     this.backoutStarted = false;
 
+    const reelStartY =
+      this.movingDirection === MovingDirection.DOWN
+        ? this.symbolHeight
+        : -this.symbolHeight;
+
     await gsap.to(this.position, {
-      y:
-        this.movingDirection === "down"
-          ? this.symbolHeight
-          : -this.symbolHeight,
-      duration: this.spinningTweenDuration * 4, // approximately matches the spinning speed, but would be good to calculate it explicitly
+      y: reelStartY,
+      duration: this.spinningTweenDuration * 3, // approximately matches the spinning speed, but would be good to calculate it explicitly
       ease: "back.out",
       onUpdate: () => {
-        // once the reel crosses the symbol height it will only go back
-        // and we loop the last symbol to be visible at the top (without resetting the animation)
-        // issue two elements overlapping
-        if (!this.backoutStarted && this.position.y >= this.symbolHeight) {
+        // Check if the reel has crossed the symbol height threshold (either up or down)
+        // and adjust the symbols to loop seamlessly without restarting the animation.
+        const crossedUpperThreshold = this.position.y >= this.symbolHeight;
+        const crossedLowerThreshold = this.position.y <= -this.symbolHeight;
+
+        const isTreshholdCrossed =
+          crossedUpperThreshold || crossedLowerThreshold;
+
+        if (!this.backoutStarted && isTreshholdCrossed) {
           this.loopReel();
+
+          // Shift all symbols by one symbol height in the appropriate direction,
+          // to simulate looping effect at the top or bottom of the reel.
+          const shift =
+            this.movingDirection === MovingDirection.UP
+              ? this.symbolHeight // move symbols down if reel moves up
+              : -this.symbolHeight; // move symbols up if reel moves down
+
           for (const symbol of this.symbols) {
-            symbol.position.y +=
-              this.movingDirection === "up" ? symbol.height : -symbol.height;
-            // symbol.position.y -= symbol.height;
+            symbol.position.y += shift;
           }
-          this.backoutStarted = true;
+
+          // Mark that the backout behavior has started so it doesn't repeat unnecessarily
+          if (crossedUpperThreshold) {
+            this.backoutStarted = true;
+          }
         }
       },
     });

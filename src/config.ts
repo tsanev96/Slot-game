@@ -3,6 +3,8 @@
 // demo. In a real project it would probably come from the outside world and
 // I would define a zod schema for the type and validate the config using it
 
+import { MovingDirection } from "./types";
+
 export const gameConfig = {
   assets: {
     symbols: ["cherry.png", "plum.jpg", "orange.jpg"],
@@ -15,10 +17,10 @@ export const gameConfig = {
   reelAreaHeight: 400, // px
   spinButtonSize: 150, // px
   spinningSpeed: 3, // full reel rotations per second
-  stopDelay: 4000, // time to first reel stop, ms
+  stopDelay: 2500, // time to first reel stop, ms
   stopInterval: 400, // time between reel stops, ms
   startInterval: 400, // time between reel starts, ms
-  movingDirection: "down",
+  movingDirection: MovingDirection.UP, // up or down
   // down original
 };
 

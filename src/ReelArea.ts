@@ -15,6 +15,7 @@ export class ReelArea extends Container {
   private readonly stopDelay: number;
   private readonly stopInterval: number;
   private readonly startInterval: number;
+  private readonly movingDirection: string;
 
   constructor(config: GameConfig) {
     super();
@@ -30,22 +31,11 @@ export class ReelArea extends Container {
 
     this.addChild(this.mask);
 
-    // this.addChild(
-    //   new Graphics()
-    //     .lineStyle(10, 0xaa0000)
-    //     .drawRect(
-    //       -10,
-    //       -10,
-    //       config.reelAreaWidth + 20,
-    //       config.reelAreaHeight + 20
-    //     )
-    // );
-
     const symbolWidth = config.reelAreaWidth / config.reelsCount;
 
     this.reels = Array.from(
       { length: config.reelsCount },
-      () => new Reel(config)
+      () => new Reel(config),
     );
 
     for (const [i, reel] of this.reels.entries()) {
@@ -65,7 +55,7 @@ export class ReelArea extends Container {
 
   public override on(
     event: ReelAreaEvents | Parameters<Container["on"]>[0],
-    callback: () => void
+    callback: () => void,
   ) {
     return super.on(event, callback);
   }
@@ -73,7 +63,7 @@ export class ReelArea extends Container {
   public startSpinning() {
     if (this.reels.length * this.startInterval > this.stopDelay) {
       throw new Error(
-        `Invalid config: reels start after stop delay (${this.reels.length}*${this.startInterval} > ${this.stopDelay})`
+        `Invalid config: reels start after stop delay (${this.reels.length}*${this.startInterval} > ${this.stopDelay})`,
       );
     }
 

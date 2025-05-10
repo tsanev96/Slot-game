@@ -29,6 +29,7 @@ export class Reel extends Container {
   private readonly symbolHeight: number;
   private readonly reelAreaWidth: number;
   private readonly reelAreaHeight: number;
+  private readonly movingDirection: string;
 
   /** the amount of time it takes one symbol going to go one symbols's height down
       which is done repeatedly use in the spinning animation */
@@ -37,6 +38,7 @@ export class Reel extends Container {
   constructor(config: GameConfig) {
     super();
 
+    this.movingDirection = config.movingDirection;
     this.reelAreaWidth = config.reelAreaWidth;
     this.reelAreaHeight = config.reelAreaHeight;
     this.symbolWidth = this.reelAreaWidth / config.reelsCount;
@@ -51,20 +53,22 @@ export class Reel extends Container {
         new ReelSymbol(
           AssetLoader.getInstance().getRandomSymbolTexture(),
           this.symbolWidth,
-          this.symbolHeight
-        )
+          this.symbolHeight,
+        ),
     );
 
+    // down: first symbol placed above the reel area
+    // up: first symbol placed below the reel area
     for (const [i, symbol] of this.symbols.entries()) {
-      // the first symbol is actually placed above the reel area so while moving down there won't be a blank space
-      symbol.y = (i - 1) * this.symbolHeight;
+      const index = this.movingDirection === "down" ? i - 1 : i;
+      symbol.y = index * this.symbolHeight;
       this.addChild(symbol);
     }
   }
 
   public override on(
     event: ReelEvents | Parameters<Container["on"]>[0],
-    callback: () => void
+    callback: () => void,
   ) {
     return super.on(event, callback);
   }
@@ -78,21 +82,10 @@ export class Reel extends Container {
     });
     this.loopReel();
     this.position.y = 0;
+    // return; // single spin TODO
 
     this.needsToStop = false;
 
-    // would prefer to use repeat but I think it doesn't work reliably in GSAP - https://github.com/greensock/GSAP/issues/593
-    // this.spinningTween = gsap.to(this.position, {
-    //   startAt: { y: 0 },
-    //   y: this.symbolHeight,
-    //   duration: this.spinningTweenDuration,
-    //   ease: "none",
-    //   repeat: Infinity,
-    //   onRepeat: () => {
-    //     this.loopReel();
-    //   },
-    // });
-    // instead we simulate the above repeat like so:
     const tween = gsap.to(this.position, {
       // start animating twice the height and time
       y: this.symbolHeight * 2,
@@ -114,18 +107,31 @@ export class Reel extends Container {
     });
   }
 
+  // TODO
+
+  private updateSymbolPosition(symbol: ReelSymbol, eps: number) {
+    const directionIsDown = this.movingDirection === "down";
+    const movementY = directionIsDown ? this.symbolHeight : -this.symbolHeight;
+
+    symbol.position.y += movementY;
+
+    const hasMovedOffscreen = directionIsDown
+      ? symbol.position.y >= this.reelAreaHeight - eps
+      : symbol.position.y <= -this.symbolHeight + eps;
+
+    if (hasMovedOffscreen) {
+      symbol.position.y = directionIsDown
+        ? -this.symbolHeight // moves at the top - hidden
+        : this.reelAreaHeight; // moves at the bottom - hidden
+      // symbol.texture = AssetLoader.getInstance().getRandomSymbolTexture();
+    }
+  }
   /** moves all symbols 1 position down, and puts a random symbol on the top
       when the spinning animation is reset, the reel will go back one place, and the symbols down one place, visually staying in the same place */
   private loopReel() {
     for (const symbol of this.symbols) {
-      symbol.position.y += this.symbolHeight;
       const eps = 0.1;
-      // only the last reel will be close to the boundary
-      // we use reuse it as the random symbol and move it to the top
-      if (symbol.position.y >= this.reelAreaHeight - eps) {
-        symbol.position.y = -this.symbolHeight;
-        symbol.texture = AssetLoader.getInstance().getRandomSymbolTexture();
-      }
+      this.updateSymbolPosition(symbol, eps);
     }
   }
 

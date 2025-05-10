@@ -13,6 +13,8 @@ async function main() {
     height: window.innerHeight,
   });
 
+  globalThis.__PIXI_APP__ = app;
+
   await AssetLoader.getInstance().load(gameConfig);
 
   const game = new Game(gameConfig);

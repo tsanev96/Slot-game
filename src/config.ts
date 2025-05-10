@@ -18,6 +18,8 @@ export const gameConfig = {
   stopDelay: 4000, // time to first reel stop, ms
   stopInterval: 400, // time between reel stops, ms
   startInterval: 400, // time between reel starts, ms
+  movingDirection: "down",
+  // down original
 };
 
 export type GameConfig = typeof gameConfig;

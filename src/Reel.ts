@@ -74,12 +74,17 @@ export class Reel extends Container {
   }
 
   public async startSpinning() {
+    // const initialShiftReelDirection = this.movingDirection === "up" ? -1 : 1;
     // ease in to the spinning animiation
     await gsap.to(this.position, {
-      y: this.symbolHeight,
+      y:
+        this.movingDirection === "down"
+          ? this.symbolHeight
+          : -this.symbolHeight,
       duration: this.spinningTweenDuration * 2, // will approximately match the linear speed of the spinning, but would be good to calculate it explicitly
       ease: "power1.in",
     });
+    // return;
     this.loopReel();
     this.position.y = 0;
     // return; // single spin TODO
@@ -88,7 +93,7 @@ export class Reel extends Container {
 
     const tween = gsap.to(this.position, {
       // start animating twice the height and time
-      y: this.symbolHeight * 2,
+      y: this.symbolHeight * 2 * (this.movingDirection === "down" ? 1 : -1),
       duration: this.spinningTweenDuration * 2,
       ease: "none",
       onUpdate: () => {
@@ -139,6 +144,7 @@ export class Reel extends Container {
     this.needsToStop = true;
   }
 
+  ///sadfsafdsfsdf NOOOOEOOOOOOOOO
   public async beginStoppingAnimation() {
     if (this.stopping) {
       // could be stopping from multiple sources, if it's already stopping, we let the animation continue
@@ -149,7 +155,10 @@ export class Reel extends Container {
     this.backoutStarted = false;
 
     await gsap.to(this.position, {
-      y: this.symbolHeight,
+      y:
+        this.movingDirection === "down"
+          ? this.symbolHeight
+          : -this.symbolHeight,
       duration: this.spinningTweenDuration * 4, // approximately matches the spinning speed, but would be good to calculate it explicitly
       ease: "back.out",
       onUpdate: () => {
@@ -161,6 +170,7 @@ export class Reel extends Container {
           for (const symbol of this.symbols) {
             symbol.position.y +=
               this.movingDirection === "up" ? symbol.height : -symbol.height;
+            // symbol.position.y -= symbol.height;
           }
           this.backoutStarted = true;
         }

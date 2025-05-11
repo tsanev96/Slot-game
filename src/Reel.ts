@@ -87,7 +87,7 @@ export class Reel extends Container {
     });
     this.loopReel();
     this.position.y = 0;
-    return; // single spin TODO
+    // return; // single spin
 
     this.needsToStop = false;
 
@@ -130,16 +130,12 @@ export class Reel extends Container {
       symbol.position.y = directionIsDown
         ? -this.symbolHeight // moves at the top - hidden
         : this.reelAreaHeight; // moves at the bottom - hidden
-      // symbol.texture = AssetLoader.getInstance().getRandomSymbolTexture();
+      symbol.texture = AssetLoader.getInstance().getRandomSymbolTexture();
     }
   }
   /** moves all symbols 1 position down, and puts a random symbol on the top
       when the spinning animation is reset, the reel will go back one place, and the symbols down one place, visually staying in the same place */
   private loopReel() {
-    for (const symbol of this.symbols) {
-      this.updateSymbolPosition(symbol);
-    }
-
     this.symbols.forEach(this.updateSymbolPosition.bind(this));
   }
 
@@ -163,7 +159,7 @@ export class Reel extends Container {
 
     await gsap.to(this.position, {
       y: reelStartY,
-      duration: this.spinningTweenDuration * 3, // approximately matches the spinning speed, but would be good to calculate it explicitly
+      duration: this.spinningTweenDuration * 4, // approximately matches the spinning speed, but would be good to calculate it explicitly
       ease: "back.out",
       onUpdate: () => {
         // Check if the reel has crossed the symbol height threshold (either up or down)

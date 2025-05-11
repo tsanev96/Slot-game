@@ -17,10 +17,10 @@ export const gameConfig = {
   reelAreaHeight: 400, // px
   spinButtonSize: 150, // px
   spinningSpeed: 3, // full reel rotations per second
-  stopDelay: 2500, // time to first reel stop, ms
+  stopDelay: 4000, // time to first reel stop, ms
   stopInterval: 400, // time between reel stops, ms
   startInterval: 400, // time between reel starts, ms
-  movingDirection: MovingDirection.UP, // up or down
+  movingDirection: MovingDirection.DOWN, // up or down
   // down original
 };
 

@@ -42,8 +42,12 @@ export class Reel extends Container {
     this.movingDirection = config.movingDirection;
     this.reelAreaWidth = config.reelAreaWidth;
     this.reelAreaHeight = config.reelAreaHeight;
-    this.symbolWidth = this.reelAreaWidth / config.reelsCount;
-    this.symbolHeight = this.reelAreaHeight / config.symbolsPerReel;
+    const { symbolWidth, symbolHeight } = this.createSymbolDimensions(
+      config.reelsCount,
+      config.symbolsPerReel,
+    );
+    this.symbolWidth = symbolWidth;
+    this.symbolHeight = symbolHeight;
     this.spinningTweenDuration =
       1000 / (config.symbolsPerReel * config.spinningSpeed);
 
@@ -99,6 +103,24 @@ export class Reel extends Container {
     }
   }
 
+  private createSymbolDimensions(reelsCount: number, symbolsPerReel: number) {
+    switch (this.movingDirection) {
+      case MovingDirection.UP:
+      case MovingDirection.DOWN:
+        return {
+          symbolWidth: this.reelAreaWidth / reelsCount,
+          symbolHeight: this.reelAreaHeight / symbolsPerReel,
+        };
+
+      case MovingDirection.LEFT:
+      case MovingDirection.RIGHT:
+        return {
+          symbolWidth: this.reelAreaWidth / symbolsPerReel,
+          symbolHeight: this.reelAreaHeight / reelsCount,
+        };
+    }
+  }
+
   private getReelPosition() {
     switch (this.movingDirection) {
       case MovingDirection.DOWN:
@@ -112,9 +134,8 @@ export class Reel extends Container {
           x: this.position.x,
         };
       case MovingDirection.LEFT:
-        // todo gameare width + this.symbolWidth
         return {
-          x: -this.symbolWidth, //this.position.x - this.symbolWidth,
+          x: -this.symbolWidth,
           y: this.position.y,
         };
       case MovingDirection.RIGHT:
@@ -161,7 +182,6 @@ export class Reel extends Container {
         throw new Error("Invalid moving direction");
     }
   }
-
   public async startSpinning(i: number) {
     const { x, y } = this.getReelPosition();
     // ease in to the spinning animiation
@@ -171,9 +191,9 @@ export class Reel extends Container {
       duration: this.spinningTweenDuration * 2, // will approximately match the linear speed of the spinning, but would be good to calculate it explicitly
       ease: "power1.in",
     });
-    this.loopReel();
-    // this.position.y = i * ; // Y axis
 
+    this.loopReel();
+    // this.position.y = 0; // Y axis
     // this.position.x = 0; //i * this.symbolWidth;
     // return; // single spin
 

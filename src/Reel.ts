@@ -60,10 +60,71 @@ export class Reel extends Container {
 
     // down: first symbol placed above the reel area
     // up: first symbol placed below the reel area
+    // for (const [i, symbol] of this.symbols.entries()) {
+    //   const index = this.movingDirection === MovingDirection.DOWN ? i - 1 : i;
+    //   symbol.y = index * this.symbolHeight;
+    //   this.addChild(symbol);
+    // }
+
     for (const [i, symbol] of this.symbols.entries()) {
-      const index = this.movingDirection === MovingDirection.DOWN ? i - 1 : i;
-      symbol.y = index * this.symbolHeight;
+      let index = i;
+
+      switch (this.movingDirection) {
+        case MovingDirection.DOWN:
+          index = i - 1; // start one symbol above
+          symbol.y = index * this.symbolHeight;
+          symbol.x = 0;
+          break;
+
+        case MovingDirection.UP:
+          // no change to index
+          symbol.y = index * this.symbolHeight;
+          symbol.x = 0;
+          break;
+
+        case MovingDirection.LEFT:
+          index = i; // optionally adjust if needed
+          symbol.x = index * this.symbolWidth;
+          symbol.y = 0;
+          break;
+
+        case MovingDirection.RIGHT:
+          index = i - 1; // shift left by one symbol
+          symbol.x = index * this.symbolWidth;
+          symbol.y = 0;
+          break;
+      }
+
       this.addChild(symbol);
+    }
+  }
+
+  private getReelPosition() {
+    switch (this.movingDirection) {
+      case MovingDirection.DOWN:
+        return {
+          x: this.position.x,
+          y: this.symbolHeight,
+        };
+      case MovingDirection.UP:
+        return {
+          y: -this.symbolHeight,
+          x: this.position.x,
+        };
+      case MovingDirection.LEFT:
+        // todo gameare width + this.symbolWidth
+        return {
+          x: 0, //this.position.x - this.symbolWidth,
+          y: this.position.y + this.symbolHeight,
+        };
+      case MovingDirection.RIGHT:
+        // todo
+        return {
+          x: 0,
+          y: this.position.y,
+        };
+      default:
+        throw new Error("Invalid moving direction");
     }
   }
 
@@ -74,20 +135,23 @@ export class Reel extends Container {
     return super.on(event, callback);
   }
 
-  public async startSpinning() {
-    const initialShiftReelDirection =
-      this.movingDirection === MovingDirection.DOWN
-        ? this.symbolHeight
-        : -this.symbolHeight;
+  public async startSpinning(i: number) {
+    console.log("old y", this.position.y);
+    const { x, y } = this.getReelPosition();
+    console.log(y);
     // ease in to the spinning animiation
     await gsap.to(this.position, {
-      y: initialShiftReelDirection,
+      x,
+      y,
       duration: this.spinningTweenDuration * 2, // will approximately match the linear speed of the spinning, but would be good to calculate it explicitly
       ease: "power1.in",
     });
     this.loopReel();
-    this.position.y = 0;
-    return; // single spin TODO
+    console.log(this.position.x);
+    // this.position.y = 0; // Y axis
+
+    this.position.x = i * this.symbolWidth;
+    return; // single spin
 
     this.needsToStop = false;
 
@@ -115,32 +179,85 @@ export class Reel extends Container {
     });
   }
 
-  private updateSymbolPosition(symbol: ReelSymbol) {
+  private getSymbolMovementDirection(symbol: ReelSymbol) {
+    switch (this.movingDirection) {
+      case MovingDirection.DOWN:
+        return {
+          x: symbol.position.x,
+          y: this.symbolHeight,
+        };
+      case MovingDirection.UP:
+        return {
+          x: symbol.position.x,
+          y: -this.symbolHeight,
+        };
+      case MovingDirection.LEFT:
+        return {
+          x: -this.symbolWidth,
+          y: 0,
+        };
+      // todo
+      case MovingDirection.RIGHT:
+        return {
+          x: this.symbolWidth,
+          y: 0,
+        };
+      default:
+        throw new Error("Invalid moving direction");
+    }
+  }
+
+  private isSymbolOffScreen(
+    symbol: ReelSymbol,
+    eps: number,
+  ): { xAdjust: number; yAdjust: number } {
+    switch (this.movingDirection) {
+      case MovingDirection.DOWN:
+        if (symbol.position.y >= this.reelAreaHeight - eps) {
+          return { xAdjust: 0, yAdjust: -this.reelAreaHeight }; // example wrap/reset logic
+        }
+        break;
+
+      case MovingDirection.UP:
+        if (symbol.position.y <= -this.symbolHeight + eps) {
+          return { xAdjust: 0, yAdjust: this.reelAreaHeight };
+        }
+        break;
+
+      case MovingDirection.RIGHT:
+        if (symbol.position.x >= this.reelAreaWidth - eps) {
+          return { xAdjust: -this.reelAreaWidth, yAdjust: 0 };
+        }
+        break;
+      case MovingDirection.LEFT:
+        if (symbol.position.x <= -this.symbolWidth + eps) {
+          return { xAdjust: this.reelAreaWidth, yAdjust: 0 };
+        }
+        break;
+    }
+
+    return { xAdjust: 0, yAdjust: 0 };
+  }
+
+  private shiftSymbolPosition(symbol: ReelSymbol) {
     const eps = 0.1;
-    const directionIsDown = this.movingDirection === MovingDirection.DOWN;
-    const movementY = directionIsDown ? this.symbolHeight : -this.symbolHeight;
+    const { x, y } = this.getSymbolMovementDirection(symbol);
+    symbol.position.y += y;
+    symbol.position.x += x;
 
-    symbol.position.y += movementY;
+    const { xAdjust, yAdjust } = this.isSymbolOffScreen(symbol, eps);
 
-    const hasMovedOffscreen = directionIsDown
-      ? symbol.position.y >= this.reelAreaHeight - eps
-      : symbol.position.y <= -this.symbolHeight + eps;
-
-    if (hasMovedOffscreen) {
-      symbol.position.y = directionIsDown
-        ? -this.symbolHeight // moves at the top - hidden
-        : this.reelAreaHeight; // moves at the bottom - hidden
-      // symbol.texture = AssetLoader.getInstance().getRandomSymbolTexture();
+    if (xAdjust !== 0 || yAdjust !== 0) {
+      // change the symbol only if it has moved off screen
+      symbol.texture = AssetLoader.getInstance().getRandomSymbolTexture();
+      symbol.position.x += xAdjust;
+      symbol.position.y += yAdjust;
     }
   }
   /** moves all symbols 1 position down, and puts a random symbol on the top
       when the spinning animation is reset, the reel will go back one place, and the symbols down one place, visually staying in the same place */
   private loopReel() {
-    for (const symbol of this.symbols) {
-      this.updateSymbolPosition(symbol);
-    }
-
-    this.symbols.forEach(this.updateSymbolPosition.bind(this));
+    this.symbols.forEach(this.shiftSymbolPosition.bind(this));
   }
 
   public stopSpinning() {
@@ -148,21 +265,20 @@ export class Reel extends Container {
   }
 
   public async beginStoppingAnimation() {
+    return;
     if (this.stopping) {
       // could be stopping from multiple sources, if it's already stopping, we let the animation continue
       return;
     }
 
+    const { x, y } = this.getReelPosition();
+
     this.stopping = true;
     this.backoutStarted = false;
 
-    const reelStartY =
-      this.movingDirection === MovingDirection.DOWN
-        ? this.symbolHeight
-        : -this.symbolHeight;
-
     await gsap.to(this.position, {
-      y: reelStartY,
+      x,
+      y,
       duration: this.spinningTweenDuration * 3, // approximately matches the spinning speed, but would be good to calculate it explicitly
       ease: "back.out",
       onUpdate: () => {

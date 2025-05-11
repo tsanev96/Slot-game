@@ -3,6 +3,7 @@ import { Container, Graphics } from "pixi.js";
 
 import { GameConfig } from "./config";
 import { Reel, ReelEvents } from "./Reel";
+import { MovingDirection } from "./types";
 
 export enum ReelAreaEvents {
   allStartedSpinning = "allStartedSpinning",
@@ -15,7 +16,7 @@ export class ReelArea extends Container {
   private readonly stopDelay: number;
   private readonly stopInterval: number;
   private readonly startInterval: number;
-  private readonly movingDirection: string;
+  private readonly movingDirection: MovingDirection;
 
   constructor(config: GameConfig) {
     super();
@@ -23,6 +24,7 @@ export class ReelArea extends Container {
     this.stopDelay = config.stopDelay;
     this.stopInterval = config.stopInterval;
     this.startInterval = config.startInterval;
+    this.movingDirection = config.movingDirection;
 
     this.mask = new Graphics()
       .beginFill(0xffffff)
@@ -32,14 +34,26 @@ export class ReelArea extends Container {
     this.addChild(this.mask);
 
     const symbolWidth = config.reelAreaWidth / config.reelsCount;
-
+    const symbolHeight = config.reelAreaHeight / config.symbolsPerReel;
     this.reels = Array.from(
       { length: config.reelsCount },
       () => new Reel(config),
     );
-
     for (const [i, reel] of this.reels.entries()) {
-      reel.position.x = i * symbolWidth;
+      if (
+        this.movingDirection === MovingDirection.LEFT ||
+        this.movingDirection === MovingDirection.RIGHT
+      ) {
+        reel.position.x = 0;
+        reel.position.y = i * symbolHeight;
+      } else if (
+        this.movingDirection === MovingDirection.UP ||
+        this.movingDirection === MovingDirection.DOWN
+      ) {
+        reel.position.x = i * symbolWidth;
+        reel.position.y = 0;
+      }
+
       this.addChild(reel);
     }
 
@@ -71,7 +85,7 @@ export class ReelArea extends Container {
 
     for (const [i, reel] of this.reels.entries()) {
       gsap.delayedCall(i * this.startInterval, () => {
-        reel.startSpinning();
+        reel.startSpinning(i);
         if (i === this.reels.length - 1) {
           this.emit("allStartedSpinning");
         }

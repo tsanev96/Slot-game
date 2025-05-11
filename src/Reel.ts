@@ -114,8 +114,8 @@ export class Reel extends Container {
       case MovingDirection.LEFT:
         // todo gameare width + this.symbolWidth
         return {
-          x: 0, //this.position.x - this.symbolWidth,
-          y: this.position.y + this.symbolHeight,
+          x: -this.symbolWidth, //this.position.x - this.symbolWidth,
+          y: this.position.y,
         };
       case MovingDirection.RIGHT:
         // todo
@@ -135,10 +135,35 @@ export class Reel extends Container {
     return super.on(event, callback);
   }
 
+  private getSpinningReelPosition() {
+    switch (this.movingDirection) {
+      case MovingDirection.DOWN:
+        return {
+          y: this.position.y + this.symbolHeight * 2,
+          x: this.position.x,
+        };
+      case MovingDirection.UP:
+        return {
+          y: this.position.y - this.symbolHeight * 2,
+          x: this.position.x,
+        };
+      case MovingDirection.RIGHT:
+        return {
+          x: this.position.x + this.symbolWidth * 2,
+          y: this.position.y,
+        };
+      case MovingDirection.LEFT:
+        return {
+          x: this.position.x - this.symbolWidth * 2,
+          y: this.position.y,
+        };
+      default:
+        throw new Error("Invalid moving direction");
+    }
+  }
+
   public async startSpinning(i: number) {
-    console.log("old y", this.position.y);
     const { x, y } = this.getReelPosition();
-    console.log(y);
     // ease in to the spinning animiation
     await gsap.to(this.position, {
       x,
@@ -147,20 +172,20 @@ export class Reel extends Container {
       ease: "power1.in",
     });
     this.loopReel();
-    console.log(this.position.x);
-    // this.position.y = 0; // Y axis
+    // this.position.y = i * ; // Y axis
 
-    this.position.x = i * this.symbolWidth;
-    return; // single spin
+    // this.position.x = 0; //i * this.symbolWidth;
+    // return; // single spin
 
     this.needsToStop = false;
 
+    const { x: tweenX, y: tweenY } = this.getSpinningReelPosition();
+
+    console.log("tweenX", tweenX);
     const tween = gsap.to(this.position, {
-      // start animating twice the height and time
-      y:
-        this.symbolHeight *
-        2 *
-        (this.movingDirection === MovingDirection.DOWN ? 1 : -1),
+      // start animating twice the height/width and time
+      x: tweenX,
+      y: tweenY,
       duration: this.spinningTweenDuration * 2,
       ease: "none",
       onUpdate: () => {
@@ -217,13 +242,11 @@ export class Reel extends Container {
           return { xAdjust: 0, yAdjust: -this.reelAreaHeight }; // example wrap/reset logic
         }
         break;
-
       case MovingDirection.UP:
         if (symbol.position.y <= -this.symbolHeight + eps) {
           return { xAdjust: 0, yAdjust: this.reelAreaHeight };
         }
         break;
-
       case MovingDirection.RIGHT:
         if (symbol.position.x >= this.reelAreaWidth - eps) {
           return { xAdjust: -this.reelAreaWidth, yAdjust: 0 };
@@ -231,7 +254,7 @@ export class Reel extends Container {
         break;
       case MovingDirection.LEFT:
         if (symbol.position.x <= -this.symbolWidth + eps) {
-          return { xAdjust: this.reelAreaWidth, yAdjust: 0 };
+          return { xAdjust: this.reelAreaWidth + this.symbolWidth, yAdjust: 0 };
         }
         break;
     }
